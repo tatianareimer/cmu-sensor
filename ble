@@ -1,0 +1,66 @@
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLE2902.h>
+#include <BLEUtils.h>
+
+// Define the UUID for your service and characteristic
+#define SERVICE_UUID "2fc03570-8ae7-407f-a375-3d2d74d8fc0f"
+#define CHARACTERISTIC_UUID "1fc03570-8ae7-407f-a375-3d2d74d8fc0f"
+
+
+//BLEServer* pServer;
+BLECharacteristic* pCharacteristic;
+bool deviceConnected = false;
+const int LED = 2;
+
+
+class MyServerCallbacks : public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+        deviceConnected = true;
+    }
+
+    void onDisconnect(BLEServer* pServer) {
+        deviceConnected = false;
+    }
+};
+
+void setup() {
+    Serial.begin(115200);
+
+    // Initialize the BLE device
+    BLEDevice::init("ESP32 BLE");
+
+    // Create a BLE server
+    BLEServer *pServer = BLEDevice::createServer();
+    pServer->setCallbacks(new MyServerCallbacks());
+
+    // Create a BLE service
+    BLEService* pService = pServer->createService(SERVICE_UUID);
+
+    pCharacteristic = pService->createCharacteristic(
+                      CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_NOTIFY |
+                      BLECharacteristic::PROPERTY_READ |
+                      BLECharacteristic::PROPERTY_WRITE
+                    );
+
+    pCharacteristic->addDescriptor(new BLE2902());
+    
+
+    pCharacteristic->setValue("Hello World");
+
+    // Start the service
+    pService->start();
+
+    // Start advertising
+    pServer->getAdvertising()->start();
+}
+
+void loop() {
+    if (deviceConnected) {
+        // You can continuously send "Hello World" or any other data here
+      pCharacteristic->setValue("Hello World");
+      pCharacteristic->notify();
+      delay(1000); // Adjust the delay to control the update rate
+    }
+}
